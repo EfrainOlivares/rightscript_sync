@@ -1,5 +1,4 @@
-source "https://rubygems.org"
+source 'https://rubygems.org'
 
+# Specify your gem's dependencies in rightscript_sync.gemspec
 gemspec
-
-gem "right_api_client", :git => "https://github.com/rightscale/right_api_client.git"

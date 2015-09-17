@@ -9,4 +9,5 @@ Gem::Specification.new do |gem|
   gem.add_runtime_dependency 'thor'
   gem.add_runtime_dependency 'terminal-table'
   gem.add_runtime_dependency 'right_api_client', '~> 1.5.26'
+  gem.add_development_dependency 'rake'
 end
