@@ -150,6 +150,7 @@ class RightscriptUpload < Thor
 
   def api_client
     @client ||= RightApi::Client.new(YAML.load_file(options[:config]).merge(timeout: nil))
+    @client.log(STDERR)
     @client
   end
 
