@@ -9,7 +9,7 @@ class RightscriptUpload < Thor
     aliases: '-c', default: File.expand_path('~/.right_api_client/login.yml')
 
   desc "list", "List RightScripts"
-  method_option :filter, 
+  method_option :filter,
     :desc => "Filter names according to regular expression",
     :aliases => "-f"
   def list
@@ -39,12 +39,12 @@ class RightscriptUpload < Thor
     :type => :boolean,
     :aliases => "-f"
   def upload(*files)
-    file_list = get_file_list(files) 
+    file_list = get_file_list(files)
     failed = verify_file_list(file_list)
     if failed.length > 0
       puts "The following files have no metadata: "
       failed.each { |f| puts f }
-      puts 
+      puts
       if options[:force]
         puts "Force flag is set, uploading all files anyways"
       else
@@ -57,7 +57,7 @@ class RightscriptUpload < Thor
       push_to_rightscale(f)
     end
   end
-  
+
   desc "set_metadata <files>", "Add metadata to files, if it doesn't exist"
   def set_metadata(*files)
     file_list = get_file_list(files)
@@ -69,45 +69,66 @@ class RightscriptUpload < Thor
   end
 
   desc "download <file> [-n -i] <script dash name>", "Download RightScript to file"
-  method_option :id, 
+  method_option :id,
     :desc => "RightScript ID number to download",
     :aliases => "-i",
     :type => :numeric
-  method_option :name, 
+  method_option :name,
     :desc => "RightScript Name to download",
     :aliases => "-n"
   def download(file)
-    raise ArgumentError.new("Either name or id must be supplied") unless options[:name] || options[:id]
-    raise ArgumentError.new("Filename to download to must be supplied") unless file && !file.empty?
+    if options[:name] || options[:id]
+      raise ArgumentError.new("Filename to download to must be supplied") unless file && !file.empty?
 
-    if options[:id]
-      rightscript = api_client.right_scripts(:id => options[:id]).show
-    elsif options[:name]
-      rightscripts = api_client.right_scripts.index(:filter => ["name==#{options[:name]}"])
-      rightscripts = rightscripts.select { |rs| rs.revision.to_i == 0 && rs.name == options[:name] }
-      if rightscripts.length > 1
-        raise ArgumentError.new("More than one rightscript round with name #{options[:name]}")
-      elsif rightscripts.length == 0
-        raise ArgumentError.new("Could not find rightscript named #{options[:name]}")
+      if options[:id]
+        rightscript = api_client.right_scripts(:id => options[:id]).show
+      elsif options[:name]
+        rightscript = get_rightscript_object(options[:name])
+        raise ArgumentError.new("Could not find rightscript named #{script_name}") if rightscript.nil?
       end
-      rightscript = rightscripts.first
-    end
 
-    script_contents = rightscript.source.show.text
-    if file == "-"
-      puts script_contents
+      download_rightscript(rightscript, file)
     else
-      File.open(file, "w") do |f|
-        puts "Saving RightScript contents to #{file}"
-        f.puts(script_contents)
-      end
-      unless has_metadata?(file)
-        insert_metadata(file, rightscript.name, rightscript.description)
+      if File.directory?(file)
+        files = Dir["#{file}/*"]
+        files.each do |file_path|
+          rightscript = get_rightscript_object(File.basename(file_path, File.extname(file_path)))
+          download_rightscript(rightscript, file_path) unless rightscript.nil?
+        end
+      else
+        raise ArgumentError.new("Either name or id must be supplied OR a name should be a directory")
       end
     end
   end
 
   private
+  def get_rightscript_object(script_name)
+    rightscripts = api_client.right_scripts.index(:filter => ["name==#{script_name}"])
+    rightscripts = rightscripts.select { |rs| rs.revision.to_i == 0 && rs.name == script_name }
+    if rightscripts.length > 1
+      raise ArgumentError.new("More than one rightscript round with name #{script_name}")
+    elsif rightscripts.length == 0
+      puts "ERROR: Cound not find rightscript named #{script_name}"
+      nil
+    end
+    rightscripts.first
+  end
+
+  def download_rightscript(rightscript, file_path)
+    script_contents = rightscript.source.show.text
+    if file_path == "-"
+      puts script_contents
+    else
+      File.open(file_path, "w") do |f|
+        puts "Saving RightScript contents to #{file_path}"
+        f.puts(script_contents)
+      end
+      unless has_metadata?(file_path)
+        insert_metadata(file_path, rightscript.name, rightscript.description)
+      end
+    end
+  end
+
   def has_metadata?(filename)
     raise ArgumentError.new("File #{filename} does not exist") unless ::File.exists?(filename)
 
@@ -211,7 +232,7 @@ class RightscriptUpload < Thor
   end
 
   def list_files(dir, filter = "*")
-    Dir.glob(File.expand_path("#{dir}/##{filter}")).each do |file| 
+    Dir.glob(File.expand_path("#{dir}/##{filter}")).each do |file|
       puts file
     end
   end
@@ -247,6 +268,6 @@ class RightscriptUpload < Thor
 
   def get_from_rightcale( script_name )
     puts "Get #{script_name} from RightScale"
-  end 
+  end
 end
 
