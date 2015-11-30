@@ -234,14 +234,10 @@ class RightscriptUpload < Thor
     if rightscripts.length == 1
       rs = rightscripts.first.show
       puts "Pushing #{file} up to RightScale with RightScript name #{name} and href #{public_href(rs)}"
-      rs.source.update(File.read(file))
-      if description
-        rs.update(:right_script => { :description => description })
-      end
+      rs.update(right_script: {description: description, source: File.read(file)})
     else
-      puts "Creation of a new RightScript is not yet supported"
-      # rs = api_client.right_scripts.create(
-      # )
+      puts "Creating RightScript '#{name}'"
+      api_client.right_scripts.create(right_script: {name: name, source: File.read(file)})
     end
   end
 
